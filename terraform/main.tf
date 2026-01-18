@@ -45,6 +45,16 @@ resource "aws_iam_role" "github_actions" {
   })
 }
 
+# S3 Bucket for verification
+resource "random_pet" "bucket_suffix" {
+  length    = 2
+  separator = "-"
+}
+
+resource "aws_s3_bucket" "verify_bucket" {
+  bucket = "github-oidc-verify-${random_pet.bucket_suffix.id}"
+}
+
 resource "aws_iam_role_policy" "github_actions_verify" {
   name = "github-oidc-verify-policy"
   role = aws_iam_role.github_actions.id
@@ -56,6 +66,11 @@ resource "aws_iam_role_policy" "github_actions_verify" {
         Effect   = "Allow"
         Action   = "sts:GetCallerIdentity"
         Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "s3:ListBucket"
+        Resource = aws_s3_bucket.verify_bucket.arn
       }
     ]
   })
@@ -65,4 +80,9 @@ resource "aws_iam_role_policy" "github_actions_verify" {
 output "role_arn" {
   description = "ARN of the IAM Role for GitHub Actions"
   value       = aws_iam_role.github_actions.arn
+}
+
+output "bucket_name" {
+  description = "Name of the verification S3 bucket"
+  value       = aws_s3_bucket.verify_bucket.id
 }
