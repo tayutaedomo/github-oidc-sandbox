@@ -29,28 +29,52 @@ terraform init
 terraform apply
 ```
 
-作成後、出力される `role_arn` を控えておきます（次で使用します）。
+作成後、以下の出力値を控えておきます。
 
-### 2. GitHub Secrets の設定
+*   `role_arn`: IAM ロール ARN
+*   `bucket_name`: 検証用 S3 バケット名
 
-作成された IAM ロールの ARN を GitHub Secrets に登録します。
+### 2. GitHub Secrets / Variables の設定
+
+Terraform の出力値を使用して、GitHub Actions の環境設定を行います。
+
+#### Secrets (機密情報)
+IAM ロールの ARN を登録します。
 
 ```bash
-# Terraform の出力から Role ARN を取得して設定する場合
 export ROLE_ARN=$(terraform output -raw role_arn)
 gh secret set AWS_ROLE_ARN --body "$ROLE_ARN"
+```
+
+#### Variables (環境変数)
+S3 バケット名を登録します。
+
+```bash
+export BUCKET_NAME=$(terraform output -raw bucket_name)
+gh variable set AWS_BUCKET_NAME --body "$BUCKET_NAME"
 ```
 
 ### 3. 動作確認
 
 検証用のワークフローを手動実行します。
 
+#### OIDC 認証確認
+
 ```bash
 gh workflow run verify-oidc.yml
 gh run list
 ```
 
-成功すると、ワークフローログの `Verify Identity` ステップにて、Assume Role された ARN が表示されます。
+成功すると `aws sts get-caller-identity` が実行されます。
+
+#### S3 アクセス確認
+
+```bash
+gh workflow run verify-s3.yml
+gh run list
+```
+
+成功すると、作成した空の S3 バケットに対して `aws s3 ls` が実行されます。
 
 ## ディレクトリ構成
 
